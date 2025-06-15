@@ -1,6 +1,7 @@
+import { audioPlayer } from "@/utils/audioplayer";
 import VideoQueue from "@/utils/queue";
 import type { Command } from "@/utils/types";
-import { joinVoiceChannel } from "@discordjs/voice";
+import { AudioPlayerStatus, joinVoiceChannel } from "@discordjs/voice";
 import {
     ChatInputCommandInteraction,
     MessageFlags,
@@ -33,14 +34,17 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
 
     const queue = VideoQueue.getQueue(interaction.guildId);
     queue.add(firstVideo, 0);
-    const response =
-        queue.length() === 1
-            ? `**${firstVideo.title}** is now playing.`
-            : `**${firstVideo.title}** has been added to the queue.`;
+
+    const currentlyPlaying =
+        audioPlayer.state.status === AudioPlayerStatus.Playing;
+
+    const response = currentlyPlaying
+        ? `**${firstVideo.title}** is now playing.`
+        : `**${firstVideo.title}** has been added to the queue.`;
 
     const user = interaction.user;
 
-    const guildMember = interaction.guild.members.cache.get(user.id);
+    const guildMember = await interaction.guild.members.fetch(user.id);
     const voiceChannel = guildMember?.voice.channel;
 
     if (!voiceChannel) {
@@ -51,24 +55,24 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         return;
     }
 
-    if (!interaction.guild.members.me?.voice.channel) {
-        // If this is the first video in the queue, we can start playing it immediately.
-        await joinVoiceChannel({
-            channelId: voiceChannel.id,
-            guildId: interaction.guildId,
-            adapterCreator: interaction.guild.voiceAdapterCreator,
-        });
-        // await interaction.client.emit("play", {
-        //     video: firstVideo,
-        //     timestamp: 0,
-        //     client: interaction.client,
-        // });
-    }
-
-    await interaction.reply({
-        content: response,
-        flags: [MessageFlags.Ephemeral],
+    await joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: interaction.guildId,
+        adapterCreator: interaction.guild.voiceAdapterCreator,
     });
+
+    if (queue.length() === 1) {
+        // Dispatch dequeue event to start playing the video
+        await interaction.client.emit("dequeue", {
+            client: interaction.client,
+            guildId: interaction.guildId,
+        });
+
+        await interaction.reply({
+            content: response,
+            flags: [MessageFlags.Ephemeral],
+        });
+    }
 };
 
 export default {

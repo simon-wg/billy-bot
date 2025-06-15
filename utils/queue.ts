@@ -6,24 +6,33 @@ interface QueueEntry {
 }
 
 class VideoQueue {
-    static #instances: Map<string, VideoQueue> = new Map();
+    private static queues: Map<string, VideoQueue> = new Map();
 
-    queue: QueueEntry[] = [];
-    private constructor() {}
-    public static getQueue(guildId: string): VideoQueue {
-        if (this.#instances.get(guildId)) {
-            this.#instances.set(guildId, new VideoQueue());
+    private queue: QueueEntry[] = [];
+
+    private constructor(private guildId: string) {}
+
+    static getQueue(guildId: string): VideoQueue {
+        if (!this.queues.has(guildId)) {
+            this.queues.set(guildId, new VideoQueue(guildId));
         }
-        return this.#instances.get(guildId) as VideoQueue;
+        return this.queues.get(guildId)!;
     }
-    public add(video: YTNodes.Video, timestamp: number): void {
+
+    add(video: YTNodes.Video, timestamp: number): void {
         this.queue.push({ video, timestamp });
     }
-    public clear(): void {
-        this.queue = [];
+
+    dequeue(): QueueEntry | undefined {
+        return this.queue.shift();
     }
-    public length(): number {
+
+    length(): number {
         return this.queue.length;
+    }
+
+    clear(): void {
+        this.queue = [];
     }
 }
 

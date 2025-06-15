@@ -4,7 +4,11 @@ import { Glob } from "bun";
 import { Client, Collection, GatewayIntentBits } from "discord.js";
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildMessageReactions,
+    ],
 });
 
 client.commands = new Collection<string, Command>();
