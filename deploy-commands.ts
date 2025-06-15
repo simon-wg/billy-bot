@@ -1,6 +1,6 @@
 import { Glob } from "bun";
 import { REST, Routes } from "discord.js";
-import { clientId, token } from "./config";
+import { clientId, guildId, token } from "./config";
 
 const commands = [];
 const commandFiles = new Glob(`*/*.{ts,js}`);
@@ -21,7 +21,19 @@ const rest = new REST().setToken(token);
     try {
         console.debug(`Started refreshing ${commands.length} commands.`);
 
+        for (const command of commands) {
+            console.debug(`Command: ${command.name}`);
+        }
+
         await rest.put(Routes.applicationCommands(clientId), {
+            body: [],
+        });
+
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+            body: [],
+        });
+
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
             body: commands,
         });
     } catch (error) {

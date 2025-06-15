@@ -15,6 +15,12 @@ console.debug("Loading commands...");
 
 for await (const file of commandFiles.scan("./commands")) {
     const { default: command } = await import(`./commands/${file}`);
+    if (!command) {
+        console.error(
+            `The command at ./commands/${file} does not export a default.`,
+        );
+        continue;
+    }
     if (!("data" in command && "execute" in command)) {
         console.error(
             `The command at ./commands/${file} is missing required properties.`,
@@ -22,6 +28,7 @@ for await (const file of commandFiles.scan("./commands")) {
         continue;
     }
     client.commands.set(command.data.name, command);
+    console.debug(`Loaded command:`, command.data.name);
 }
 
 const eventFiles = new Glob(`*.{ts,js}`);
@@ -30,6 +37,12 @@ console.debug("Loading events...");
 
 for await (const file of eventFiles.scan("./events")) {
     const { default: event } = await import(`./events/${file}`);
+    if (!event) {
+        console.error(
+            `The event at ./events/${file} does not export a default.`,
+        );
+        continue;
+    }
     if (!("name" in event && "execute" in event)) {
         console.error(
             `The event at ./events/${file} is missing required properties.`,
@@ -43,8 +56,6 @@ for await (const file of eventFiles.scan("./events")) {
     }
     console.debug(`Loaded event:`, event.name);
 }
-
-console.debug(`All commands and events loaded successfully.`);
 
 client.login(token).catch((error) => {
     console.error("Failed to login:", error);
