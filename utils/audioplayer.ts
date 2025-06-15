@@ -1,17 +1,26 @@
+import { cookie } from "@/config";
 import {
     AudioPlayer,
+    AudioPlayerStatus,
     createAudioPlayer,
     NoSubscriberBehavior,
 } from "@discordjs/voice";
 import { Readable } from "node:stream";
-import { Innertube, UniversalCache } from "youtubei.js";
+import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
 let innertubeInstance: Innertube | null = null;
 
+let audioPlayer: AudioPlayer | null = null;
+
 const getYoutubeStream = async (videoId: string): Promise<Readable> => {
+    const fetchFunction = Bun.fetch;
+
     if (!innertubeInstance) {
         innertubeInstance = await Innertube.create({
+            client_type: ClientType.TV,
             cache: new UniversalCache(true, "./.cache"),
+            cookie: cookie,
+            fetch: fetchFunction,
         });
     }
 
@@ -24,10 +33,18 @@ const getYoutubeStream = async (videoId: string): Promise<Readable> => {
     return videoStream;
 };
 
-const audioPlayer: AudioPlayer = createAudioPlayer({
-    behaviors: {
-        noSubscriber: NoSubscriberBehavior.Pause,
-    },
-});
+const getAudioPlayer = (): AudioPlayer => {
+    if (!audioPlayer) {
+        audioPlayer = createAudioPlayer({
+            behaviors: {
+                noSubscriber: NoSubscriberBehavior.Pause,
+            },
+        });
+        audioPlayer.isPlaying = () => {
+            return audioPlayer?.state.status === AudioPlayerStatus.Playing;
+        };
+    }
+    return audioPlayer;
+};
 
-export { audioPlayer, getYoutubeStream };
+export { getAudioPlayer, getYoutubeStream };

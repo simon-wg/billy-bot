@@ -6,3 +6,9 @@ declare module "discord.js" {
         commands: Collection<string, Command>;
     }
 }
+
+declare module "@discordjs/voice" {
+    export interface AudioPlayer extends AudioPlayer {
+        isPlaying: () => boolean;
+    }
+}

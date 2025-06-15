@@ -9,5 +9,6 @@ const requiredEnv = (key: string): string => {
 const token = requiredEnv("DISCORD_BOT_TOKEN");
 const clientId = requiredEnv("CLIENT_ID");
 const guildId = requiredEnv("GUILD_ID");
+const cookie = requiredEnv("YOUTUBE_COOKIE");
 
-export { clientId, guildId, token };
+export { clientId, cookie, guildId, token };

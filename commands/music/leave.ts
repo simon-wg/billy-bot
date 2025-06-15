@@ -1,3 +1,5 @@
+import { serverOnlyGuard } from "@/utils/guards";
+import { setMessage } from "@/utils/messages";
 import VideoQueue from "@/utils/queue";
 import type { Command } from "@/utils/types";
 import { getVoiceConnection } from "@discordjs/voice";
@@ -8,27 +10,26 @@ import {
 } from "discord.js";
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
-    if (!interaction.guild || !interaction.guildId) {
-        await interaction.reply({
-            content: "This command can only be used in a server.",
-            flags: [MessageFlags.Ephemeral],
-        });
+    if (!(await serverOnlyGuard(interaction))) {
         return;
     }
 
-    const queue = VideoQueue.getQueue(interaction.guildId);
+    const queue = VideoQueue.getQueue(interaction.guildId!);
     queue.clear();
 
-    const connection = getVoiceConnection(interaction.guildId);
+    const connection = getVoiceConnection(interaction.guildId!);
 
     if (connection) {
         connection.destroy();
     }
 
-    await interaction.reply({
+    const interactionReply = await interaction.reply({
         content: "The music queue has been cleared.",
         flags: [MessageFlags.Ephemeral],
     });
+
+    // Removes the previous message if it exists
+    setMessage(interaction.user.id, interactionReply);
 };
 
 export default {

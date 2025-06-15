@@ -1,4 +1,4 @@
-import { audioPlayer, getYoutubeStream } from "@/utils/audioplayer";
+import { getAudioPlayer, getYoutubeStream } from "@/utils/audioplayer";
 import VideoQueue from "@/utils/queue";
 import {
     AudioPlayerStatus,
@@ -18,6 +18,7 @@ interface DequeueEvent {
 const execute = async ({ client, guildId }: DequeueEvent) => {
     const queueEntry = VideoQueue.getQueue(guildId).dequeue();
     const video = queueEntry?.video;
+    const audioPlayer = getAudioPlayer();
 
     if (!video) {
         console.debug(`No video to dequeue in guild ${guildId}`);
@@ -75,7 +76,7 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
 
         audioPlayer.on("error", (error) => {
             console.error(`Audio player error in guild ${guildId}:`, error);
-            audioPlayer.stop();
+            getAudioPlayer().stop();
             setTimeout(() => {
                 client.emit("dequeue", { client, guildId });
             }, 100);
@@ -84,23 +85,6 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
 
     try {
         const audioStream = await getYoutubeStream(video.video_id);
-
-        // Handle stream errors more gracefully
-        audioStream.on("error", (error) => {
-            console.error(
-                `Error in audio stream for video ${video.title}:`,
-                error,
-            );
-            audioPlayer.stop();
-        });
-
-        audioStream.on("close", () => {
-            console.debug(`Audio stream for video ${video.title} closed.`);
-        });
-
-        audioStream.on("end", () => {
-            console.debug(`Audio stream for video ${video.title} ended.`);
-        });
 
         const audioResource = createAudioResource(audioStream, {
             inputType: StreamType.Arbitrary,
@@ -119,6 +103,18 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
             audioPlayer.stop();
         });
 
+        audioResource.playStream.on("close", () => {
+            console.debug(
+                `Audio stream closed for video ${video.title} in guild ${guildId}`,
+            );
+        });
+
+        audioResource.playStream.on("end", () => {
+            console.debug(
+                `Audio stream ended for video ${video.title} in guild ${guildId}`,
+            );
+        });
+
         // Subscribe to the connection
         const subscription = connection.subscribe(audioPlayer);
 
@@ -132,24 +128,6 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
         // Set up handlers and start playing
         setupPlayerHandlers();
         audioPlayer.play(audioResource);
-
-        // Set up a timeout as a fallback (optional)
-        const playTimeout = setTimeout(
-            () => {
-                if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
-                    console.warn(
-                        `Audio player timeout for ${video.title} in guild ${guildId}`,
-                    );
-                    audioPlayer.stop();
-                }
-            },
-            10 * 60 * 1000,
-        );
-
-        // Clear timeout when audio finishes
-        audioPlayer.once(AudioPlayerStatus.Idle, () => {
-            clearTimeout(playTimeout);
-        });
     } catch (error) {
         console.error(
             `Error while processing video ${video.title} in guild ${guildId}:`,
