@@ -12,8 +12,12 @@ import {
 } from "discord.js";
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
+    const audioPlayer = getAudioPlayer(interaction.guildId!);
     const user = interaction.user;
+    const queue = VideoQueue.getQueue(interaction.guildId!);
+
     const guildMember = interaction.guild!.members.cache.get(user.id);
+
     const voiceChannel = guildMember?.voice.channel;
 
     if (!voiceChannel) {
@@ -25,46 +29,34 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         return;
     }
 
-    joinVoiceChannel({
+    const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: interaction.guildId!,
         adapterCreator: interaction.guild!.voiceAdapterCreator,
     });
 
+    connection.subscribe(audioPlayer);
+
     const query = interaction.options.getString("query", true);
 
-    const video = validYoutubeUrl(query)
+    const videoInfo = validYoutubeUrl(query)
         ? await videoFromUrl(query)
         : await searchYouTube(query);
 
-    if (!video) {
-        const interactionReply = interaction.reply(
-            "No videos found for the given query.",
-        );
-        setMessage(interaction.user.id, await interactionReply);
-        return;
-    }
-
-    if (!interaction.guildId || !interaction.guild) {
-        console.error(
-            "Guild ID or guild object is missing in the interaction.",
-        );
+    if (!videoInfo) {
         const interactionReply = interaction.reply({
-            content: "An error occurred while processing your request.",
+            content: "No video found for the given query.",
             flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
         });
-        setMessage(interaction.user.id, await interactionReply);
+        setMessage(user.id, await interactionReply);
         return;
     }
+    queue.add(videoInfo, 0);
 
-    const queue = VideoQueue.getQueue(interaction.guildId);
-    queue.add(video, 0);
-
-    const isPlaying: boolean = getAudioPlayer(interaction.guildId).isPlaying();
-
+    const isPlaying: boolean = audioPlayer.isPlaying();
     const response = !isPlaying
-        ? `**${video.title}** is now playing.`
-        : `**${video.title}** has been added to the queue.`;
+        ? `**${videoInfo.basic_info.title}** is now playing.`
+        : `**${videoInfo.basic_info.title}** has been added to the queue.`;
 
     if (!isPlaying) {
         // Dispatch dequeue event to start playing the video

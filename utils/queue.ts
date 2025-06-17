@@ -1,7 +1,7 @@
-import type { YTNodes } from "youtubei.js";
+import type { YT } from "youtubei.js";
 
 interface QueueEntry {
-    video: YTNodes.Video;
+    video: YT.VideoInfo;
     timestamp: number;
 }
 
@@ -19,7 +19,7 @@ class VideoQueue {
         return this.queues.get(guildId)!;
     }
 
-    add(video: YTNodes.Video, timestamp: number): void {
+    add(video: YT.VideoInfo, timestamp: number): void {
         this.queue.push({ video, timestamp });
     }
 

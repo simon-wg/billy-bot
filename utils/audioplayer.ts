@@ -1,39 +1,46 @@
 import { cookie } from "@/config";
+import { getClient } from "@/utils/discord";
 import {
     AudioPlayer,
+    AudioPlayerError,
     AudioPlayerStatus,
     createAudioPlayer,
     NoSubscriberBehavior,
 } from "@discordjs/voice";
+import { Client } from "discord.js";
 import { Readable } from "node:stream";
 import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
-let innertubeInstance: Innertube | null = null;
-
+const innertube: Innertube = await Innertube.create({
+    client_type: ClientType.TV,
+    cache: new UniversalCache(true, "./.cache"),
+    cookie: cookie,
+    fetch: Bun.fetch,
+});
 const audioPlayers: Map<string, AudioPlayer> = new Map();
+let client: Client;
+
+const setupAudioPlayers = () => {
+    client = getClient();
+};
 
 const getYoutubeStream = async (videoId: string): Promise<Readable> => {
-    const fetchFunction = Bun.fetch;
-
-    if (!innertubeInstance) {
-        innertubeInstance = await Innertube.create({
-            client_type: ClientType.TV,
-            cache: new UniversalCache(true, "./.cache"),
-            cookie: cookie,
-            fetch: fetchFunction,
-        });
+    if (!innertube) {
+        throw new Error("Innertube is not initialized");
     }
-
-    const video = await innertubeInstance.download(videoId);
+    const video = await innertube.download(videoId);
 
     const videoStream = Readable.fromWeb(video, {
-        highWaterMark: 1024 * 512, // 1MB buffer size
+        highWaterMark: 1024 * 1024, // 1MB buffer size
     });
 
     return videoStream;
 };
 
 const getAudioPlayer = (guildId: string): AudioPlayer => {
+    if (!client) {
+        throw new Error("Client is not initialized");
+    }
     if (!audioPlayers.get(guildId)) {
         const audioPlayer = createAudioPlayer({
             behaviors: {
@@ -64,8 +71,27 @@ const getAudioPlayer = (guildId: string): AudioPlayer => {
                 `Audio player is now playing: ${audioPlayer?.currentVideo()}`,
             );
         });
+        audioPlayer.on(AudioPlayerStatus.Idle, () => {
+            console.debug(
+                `Audio player is now idle in guild ${guildId}. Dispatching dequeue event.`,
+            );
+            client.emit("dequeue", { guildId });
+        });
+        audioPlayer.on("error", (error) => {
+            if (error instanceof AudioPlayerError) {
+                console.error(
+                    `Audio player error in guild ${guildId}: ${error.message}`,
+                );
+            } else {
+                console.error(
+                    `Unexpected error in audio player for guild ${guildId}:`,
+                    error,
+                );
+            }
+            client.emit("dequeue", { guildId });
+        });
     }
     return audioPlayers.get(guildId)!;
 };
 
-export { getAudioPlayer, getYoutubeStream };
+export { getAudioPlayer, getYoutubeStream, setupAudioPlayers };

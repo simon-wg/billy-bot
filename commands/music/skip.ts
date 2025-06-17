@@ -29,15 +29,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         return;
     }
 
-    audioPlayer.stop();
     const interactionReply = interaction.reply({
         content: "Skipped the current song.",
         flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
     });
 
-    setMessage(interaction.user.id, await interactionReply);
-
     interaction.client.emit("dequeue", { guildId });
+
+    setMessage(interaction.user.id, await interactionReply);
 };
 
 export default {

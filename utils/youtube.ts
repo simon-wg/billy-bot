@@ -1,14 +1,20 @@
-import Innertube, { YTNodes } from "youtubei.js";
+import { Innertube, YT, YTNodes } from "youtubei.js";
 
 const innertube = await Innertube.create();
 
 export const searchYouTube = async (
     query: string,
-): Promise<YTNodes.Video | undefined | null> => {
+): Promise<YT.VideoInfo | undefined | null> => {
     try {
         const searchResult = await innertube.search(query, { type: "video" });
         const firstVideo = searchResult.videos.firstOfType(YTNodes.Video);
-        return firstVideo;
+        const videoId = firstVideo?.video_id;
+        if (!videoId) {
+            console.debug("No video found for the given query.");
+            return null;
+        }
+        const videoInfo = innertube.getBasicInfo(videoId);
+        return videoInfo;
     } catch (error) {
         console.error("Error searching YouTube:", error);
         return null;
@@ -17,10 +23,16 @@ export const searchYouTube = async (
 
 export const videoFromUrl = async (
     query: string,
-): Promise<YTNodes.Video | undefined | null> => {
+): Promise<YT.VideoInfo | null | undefined> => {
     const url = new URL(query)!;
     const videoId = url.searchParams.get("v")!;
-    return searchYouTube(videoId);
+    try {
+        const videoInfo = innertube.getBasicInfo(videoId);
+        return videoInfo;
+    } catch (error) {
+        console.error("Error fetching video from URL:", error);
+        return null;
+    }
 };
 
 export const validYoutubeUrl = (query: string): boolean => {
