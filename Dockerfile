@@ -4,14 +4,7 @@ WORKDIR /usr/src/app
 FROM base AS install
 RUN apt-get update && apt-get install -y \
     python3 \
-    python3-pip \
     build-essential \
-    pkg-config \
-    libtool \
-    autoconf \
-    automake \
-    cmake \
-    clang \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /tmp/dev
