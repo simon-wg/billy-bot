@@ -1,4 +1,4 @@
-import { getAudioPlayer } from "@/utils/audioplayer";
+import { musicManager } from "@/index";
 import { setMessage } from "@/utils/messages";
 import VideoQueue from "@/utils/queue";
 import type { Command } from "@/utils/types";
@@ -12,10 +12,7 @@ import {
 } from "discord.js";
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
-    const audioPlayer = getAudioPlayer(
-        interaction.guildId!,
-        interaction.client,
-    );
+    const audioPlayer = musicManager.getMusicPlayer(interaction.guildId!);
     const user = interaction.user;
     const queue = VideoQueue.getQueue(interaction.guildId!);
 

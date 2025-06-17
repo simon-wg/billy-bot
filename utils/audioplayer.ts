@@ -10,7 +10,7 @@ import { Readable } from "node:stream";
 import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
 // Extended AudioPlayer class
-class ExtendedAudioPlayer extends AudioPlayer {
+class DiscordMusicPlayer extends AudioPlayer {
     public guildId: string;
     public video?: string;
     private client: Client;
@@ -84,10 +84,10 @@ class ExtendedAudioPlayer extends AudioPlayer {
 }
 
 // AudioPlayer Manager class
-class AudioPlayerManager {
-    private audioPlayers: Map<string, ExtendedAudioPlayer> = new Map();
+class MusicManager {
+    private audioPlayers: Map<string, DiscordMusicPlayer> = new Map();
     private client: Client;
-    private innertube: Innertube;
+    private innertube?: Innertube;
 
     constructor(client: Client) {
         this.client = client;
@@ -103,15 +103,15 @@ class AudioPlayerManager {
         });
     }
 
-    public getAudioPlayer(guildId: string): ExtendedAudioPlayer {
+    public getMusicPlayer(guildId: string): DiscordMusicPlayer {
         if (!this.audioPlayers.has(guildId)) {
-            const audioPlayer = new ExtendedAudioPlayer(guildId, this.client);
+            const audioPlayer = new DiscordMusicPlayer(guildId, this.client);
             this.audioPlayers.set(guildId, audioPlayer);
         }
         return this.audioPlayers.get(guildId)!;
     }
 
-    public removeAudioPlayer(guildId: string): boolean {
+    public removeMusicPlayer(guildId: string): boolean {
         const audioPlayer = this.audioPlayers.get(guildId);
         if (audioPlayer) {
             audioPlayer.removeAllListeners();
@@ -133,7 +133,7 @@ class AudioPlayerManager {
         return videoStream;
     }
 
-    public getAllAudioPlayers(): Map<string, ExtendedAudioPlayer> {
+    public getAllAudioPlayers(): Map<string, DiscordMusicPlayer> {
         return new Map(this.audioPlayers);
     }
 
@@ -145,4 +145,4 @@ class AudioPlayerManager {
     }
 }
 
-export { AudioPlayerManager, ExtendedAudioPlayer };
+export { DiscordMusicPlayer, MusicManager };

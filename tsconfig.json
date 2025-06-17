@@ -11,6 +11,7 @@
       "@/config": ["./config.ts"],
       "@/commands/*": ["./commands/*"],
       "@/utils/*": ["./utils/*"],
+      "@/index": ["./index.ts"],
     },
 
     // Bundler mode
