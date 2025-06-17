@@ -1,3 +1,4 @@
+import { setMessage } from "@/utils/messages";
 import { Events, MessageFlags, type Interaction } from "discord.js";
 
 export default {
@@ -26,15 +27,23 @@ export default {
                 error,
             );
             if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({
+                const interactionReply = interaction.reply({
                     content: "There was an error while executing this command!",
-                    flags: MessageFlags.Ephemeral,
+                    flags: [
+                        MessageFlags.Ephemeral,
+                        MessageFlags.SuppressEmbeds,
+                    ],
                 });
+                setMessage(interaction.user.id, await interactionReply);
             } else {
-                await interaction.reply({
+                const interactionReply = interaction.reply({
                     content: "There was an error while executing this command!",
-                    flags: MessageFlags.Ephemeral,
+                    flags: [
+                        MessageFlags.Ephemeral,
+                        MessageFlags.SuppressEmbeds,
+                    ],
                 });
+                setMessage(interaction.user.id, await interactionReply);
             }
         }
     },

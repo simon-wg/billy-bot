@@ -1,5 +1,5 @@
-import { Glob } from "bun";
 import { Client, Collection, GatewayIntentBits } from "discord.js";
+import { readdirSync } from "fs";
 import { join } from "path";
 import type { Command } from "./types";
 
@@ -14,31 +14,38 @@ const client = new Client({
 client.commands = new Collection<string, Command>();
 
 const commandPath = join(process.cwd(), "commands");
-const commandFiles = new Glob(`*/*.{ts,js}`);
-
-console.debug("Loading commands...");
-
-for await (const file of commandFiles.scan(commandPath)) {
-    const { default: command } = await import(join(commandPath, file));
-    if (!command) {
-        console.error(`The command ${file} does not export a default.`);
-        continue;
-    }
-    if (!("data" in command && "execute" in command)) {
-        console.error(`The command ${file} is missing required properties.`);
-        continue;
-    }
-    client.commands.set(command.data.name, command);
-    console.debug(`Loaded command:`, command.data.name);
-}
+const commandFolders = readdirSync(commandPath);
 
 const eventPath = join(process.cwd(), "events");
-const eventFiles = new Glob(`*.{ts,js}`);
+const eventFiles = readdirSync(eventPath).filter((file) =>
+    file.endsWith(".ts"),
+);
 
-console.debug("Loading events...");
+for (const folder of commandFolders) {
+    const commandsFiles = readdirSync(join(commandPath, folder)).filter(
+        (file) => file.endsWith(".ts"),
+    );
+    for (const file of commandsFiles) {
+        const filepath = join(commandPath, folder, file);
+        const { default: command } = await import(filepath);
+        if (!command) {
+            console.error(`The command ${file} does not export a default.`);
+            continue;
+        }
+        if (!("data" in command && "execute" in command)) {
+            console.error(
+                `The command ${file} is missing required properties.`,
+            );
+            continue;
+        }
+        client.commands.set(command.data.name, command);
+        console.debug(`Loaded command:`, command.data.name);
+    }
+}
 
-for await (const file of eventFiles.scan(eventPath)) {
-    const { default: event } = await import(join(eventPath, file));
+for (const file of eventFiles) {
+    const filepath = join(eventPath, file);
+    const { default: event } = await import(filepath);
     if (!event) {
         console.error(`The event ${file} does not export a default.`);
         continue;
@@ -56,9 +63,6 @@ for await (const file of eventFiles.scan(eventPath)) {
 }
 
 const getClient = (): Client => {
-    if (!client) {
-        throw new Error("Client is not initialized");
-    }
     return client;
 };
 

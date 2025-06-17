@@ -1,5 +1,4 @@
 import { cookie } from "@/config";
-import { getClient } from "@/utils/discord";
 import {
     AudioPlayer,
     AudioPlayerError,
@@ -18,11 +17,6 @@ const innertube: Innertube = await Innertube.create({
     fetch: Bun.fetch,
 });
 const audioPlayers: Map<string, AudioPlayer> = new Map();
-let client: Client;
-
-const setupAudioPlayers = () => {
-    client = getClient();
-};
 
 const getYoutubeStream = async (videoId: string): Promise<Readable> => {
     if (!innertube) {
@@ -37,10 +31,7 @@ const getYoutubeStream = async (videoId: string): Promise<Readable> => {
     return videoStream;
 };
 
-const getAudioPlayer = (guildId: string): AudioPlayer => {
-    if (!client) {
-        throw new Error("Client is not initialized");
-    }
+const getAudioPlayer = (guildId: string, client: Client): AudioPlayer => {
     if (!audioPlayers.get(guildId)) {
         const audioPlayer = createAudioPlayer({
             behaviors: {
@@ -94,4 +85,4 @@ const getAudioPlayer = (guildId: string): AudioPlayer => {
     return audioPlayers.get(guildId)!;
 };
 
-export { getAudioPlayer, getYoutubeStream, setupAudioPlayers };
+export { getAudioPlayer, getYoutubeStream };

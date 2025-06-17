@@ -5,15 +5,17 @@ import {
     getVoiceConnection,
     StreamType,
 } from "@discordjs/voice";
+import type { Client } from "discord.js";
 
 interface DequeueEvent {
     guildId: string;
+    client: Client;
 }
 
-const execute = async ({ guildId }: DequeueEvent) => {
+const execute = async ({ guildId, client }: DequeueEvent) => {
     const queueEntry = VideoQueue.getQueue(guildId).dequeue();
     const videoInfo = queueEntry?.video.basic_info;
-    const audioPlayer = getAudioPlayer(guildId);
+    const audioPlayer = getAudioPlayer(guildId, client);
 
     if (!videoInfo) {
         console.debug(`No video to dequeue in guild ${guildId}`);

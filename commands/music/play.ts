@@ -12,7 +12,10 @@ import {
 } from "discord.js";
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
-    const audioPlayer = getAudioPlayer(interaction.guildId!);
+    const audioPlayer = getAudioPlayer(
+        interaction.guildId!,
+        interaction.client,
+    );
     const user = interaction.user;
     const queue = VideoQueue.getQueue(interaction.guildId!);
 
