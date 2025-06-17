@@ -3,86 +3,146 @@ import {
     AudioPlayer,
     AudioPlayerError,
     AudioPlayerStatus,
-    createAudioPlayer,
     NoSubscriberBehavior,
 } from "@discordjs/voice";
-import { Client } from "discord.js";
+import type { Client } from "discord.js";
 import { Readable } from "node:stream";
 import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
-const innertube: Innertube = await Innertube.create({
-    client_type: ClientType.TV,
-    cache: new UniversalCache(true, "./.cache"),
-    cookie: cookie,
-    fetch: Bun.fetch,
-});
-const audioPlayers: Map<string, AudioPlayer> = new Map();
+// Extended AudioPlayer class
+class ExtendedAudioPlayer extends AudioPlayer {
+    public guildId: string;
+    public video?: string;
+    private client: Client;
 
-const getYoutubeStream = async (videoId: string): Promise<Readable> => {
-    if (!innertube) {
-        throw new Error("Innertube is not initialized");
-    }
-    const video = await innertube.download(videoId);
-
-    const videoStream = Readable.fromWeb(video, {
-        highWaterMark: 1024 * 1024, // 1MB buffer size
-    });
-
-    return videoStream;
-};
-
-const getAudioPlayer = (guildId: string, client: Client): AudioPlayer => {
-    if (!audioPlayers.get(guildId)) {
-        const audioPlayer = createAudioPlayer({
+    constructor(guildId: string, client: Client) {
+        super({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Pause,
             },
         });
-        audioPlayers.set(guildId, audioPlayer);
-        if (!audioPlayer) {
-            throw new Error("Failed to create audio player");
-        }
-        audioPlayer.isPlaying = () => {
-            return audioPlayer?.state.status === AudioPlayerStatus.Playing;
-        };
-        audioPlayer.isIdle = () => {
-            return audioPlayer?.state.status === AudioPlayerStatus.Idle;
-        };
-        audioPlayer.isPaused = () => {
-            return audioPlayer?.state.status === AudioPlayerStatus.Paused;
-        };
-        audioPlayer.currentVideo = () => {
-            if (audioPlayer?.video) {
-                return audioPlayer.video;
-            }
-            return null;
-        };
-        audioPlayer.on(AudioPlayerStatus.Playing, () => {
+
+        this.guildId = guildId;
+        this.client = client;
+        this.setupEventListeners();
+    }
+
+    private setupEventListeners(): void {
+        this.on(AudioPlayerStatus.Playing, () => {
             console.debug(
-                `Audio player is now playing: ${audioPlayer?.currentVideo()}`,
+                `Audio player is now playing: ${this.currentVideo()}`,
             );
         });
-        audioPlayer.on(AudioPlayerStatus.Idle, () => {
+
+        this.on(AudioPlayerStatus.Idle, () => {
             console.debug(
-                `Audio player is now idle in guild ${guildId}. Dispatching dequeue event.`,
+                `Audio player is now idle in guild ${this.guildId}. Dispatching dequeue event.`,
             );
-            client.emit("dequeue", { guildId });
+            this.client.emit("dequeue", {
+                guildId: this.guildId,
+                client: this.client,
+            });
         });
-        audioPlayer.on("error", (error) => {
+
+        this.on("error", (error) => {
             if (error instanceof AudioPlayerError) {
                 console.error(
-                    `Audio player error in guild ${guildId}: ${error.message}`,
+                    `Audio player error in guild ${this.guildId}: ${error.message}`,
                 );
             } else {
                 console.error(
-                    `Unexpected error in audio player for guild ${guildId}:`,
+                    `Unexpected error in audio player for guild ${this.guildId}:`,
                     error,
                 );
             }
-            client.emit("dequeue", { guildId });
+            this.client.emit("dequeue", {
+                guildId: this.guildId,
+                client: this.client,
+            });
         });
     }
-    return audioPlayers.get(guildId)!;
-};
 
-export { getAudioPlayer, getYoutubeStream };
+    public isPlaying(): boolean {
+        return this.state.status === AudioPlayerStatus.Playing;
+    }
+
+    public isIdle(): boolean {
+        return this.state.status === AudioPlayerStatus.Idle;
+    }
+
+    public isPaused(): boolean {
+        return this.state.status === AudioPlayerStatus.Paused;
+    }
+
+    public currentVideo(): string | null {
+        return this.video || null;
+    }
+
+    public setCurrentVideo(videoTitle: string): void {
+        this.video = videoTitle;
+    }
+}
+
+// AudioPlayer Manager class
+class AudioPlayerManager {
+    private audioPlayers: Map<string, ExtendedAudioPlayer> = new Map();
+    private client: Client;
+    private innertube: Innertube;
+
+    constructor(client: Client) {
+        this.client = client;
+        this.initializeInnertube();
+    }
+
+    private async initializeInnertube(): Promise<void> {
+        this.innertube = await Innertube.create({
+            client_type: ClientType.TV,
+            cache: new UniversalCache(true, "./.cache"),
+            cookie: cookie,
+            fetch: Bun.fetch,
+        });
+    }
+
+    public getAudioPlayer(guildId: string): ExtendedAudioPlayer {
+        if (!this.audioPlayers.has(guildId)) {
+            const audioPlayer = new ExtendedAudioPlayer(guildId, this.client);
+            this.audioPlayers.set(guildId, audioPlayer);
+        }
+        return this.audioPlayers.get(guildId)!;
+    }
+
+    public removeAudioPlayer(guildId: string): boolean {
+        const audioPlayer = this.audioPlayers.get(guildId);
+        if (audioPlayer) {
+            audioPlayer.removeAllListeners();
+            return this.audioPlayers.delete(guildId);
+        }
+        return false;
+    }
+
+    public async getYoutubeStream(videoId: string): Promise<Readable> {
+        if (!this.innertube) {
+            throw new Error("Innertube is not initialized");
+        }
+
+        const video = await this.innertube.download(videoId);
+        const videoStream = Readable.fromWeb(video, {
+            highWaterMark: 1024 * 1024, // 1MB buffer size
+        });
+
+        return videoStream;
+    }
+
+    public getAllAudioPlayers(): Map<string, ExtendedAudioPlayer> {
+        return new Map(this.audioPlayers);
+    }
+
+    public getActiveGuilds(): string[] {
+        return Array.from(this.audioPlayers.keys()).filter((guildId) => {
+            const player = this.audioPlayers.get(guildId);
+            return player && !player.isIdle();
+        });
+    }
+}
+
+export { AudioPlayerManager, ExtendedAudioPlayer };

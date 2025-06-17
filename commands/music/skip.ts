@@ -34,7 +34,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
     });
 
-    interaction.client.emit("dequeue", { guildId });
+    interaction.client.emit("dequeue", {
+        guildId: guildId,
+    });
 
     setMessage(interaction.user.id, await interactionReply);
 };

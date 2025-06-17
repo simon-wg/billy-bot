@@ -7,9 +7,7 @@ interface QueueEntry {
 
 class VideoQueue {
     private static queues: Map<string, VideoQueue> = new Map();
-
     private queue: QueueEntry[] = [];
-
     private constructor(private guildId: string) {}
 
     static getQueue(guildId: string): VideoQueue {
