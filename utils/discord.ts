@@ -1,6 +1,7 @@
 import { Client, Collection, GatewayIntentBits } from "discord.js";
 import { readdirSync } from "fs";
 import { join } from "path";
+import { getMusicManager } from "./audioplayer";
 import type { Command } from "./types";
 
 const client = new Client({
@@ -61,6 +62,8 @@ for (const file of eventFiles) {
     }
     console.debug(`Loaded event:`, event.name);
 }
+
+getMusicManager().initialize(client);
 
 const getClient = (): Client => {
     return client;

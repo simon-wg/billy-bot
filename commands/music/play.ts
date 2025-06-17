@@ -1,4 +1,4 @@
-import { musicManager } from "@/index";
+import { getMusicManager } from "@/utils/audioplayer";
 import { setMessage } from "@/utils/messages";
 import VideoQueue from "@/utils/queue";
 import type { Command } from "@/utils/types";
@@ -12,7 +12,7 @@ import {
 } from "discord.js";
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
-    const audioPlayer = musicManager.getMusicPlayer(interaction.guildId!);
+    const musicPlayer = getMusicManager().getMusicPlayer(interaction.guildId!);
     const user = interaction.user;
     const queue = VideoQueue.getQueue(interaction.guildId!);
 
@@ -35,7 +35,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         adapterCreator: interaction.guild!.voiceAdapterCreator,
     });
 
-    connection.subscribe(audioPlayer);
+    connection.subscribe(musicPlayer);
 
     const query = interaction.options.getString("query", true);
 
@@ -53,7 +53,7 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     }
     queue.add(videoInfo, 0);
 
-    const isPlaying: boolean = audioPlayer.isPlaying();
+    const isPlaying: boolean = musicPlayer.isPlaying();
     const response = !isPlaying
         ? `**${videoInfo.basic_info.title}** is now playing.`
         : `**${videoInfo.basic_info.title}** has been added to the queue.`;

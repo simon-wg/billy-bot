@@ -28,6 +28,6 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write .",
-    "build": "bun build --outdir dist --target bun --minify --format esm"
+    "build": "bun build index.ts --outdir dist --target bun --minify --format esm"
   }
 }

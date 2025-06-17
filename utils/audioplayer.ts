@@ -10,7 +10,7 @@ import { Readable } from "node:stream";
 import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
 // Extended AudioPlayer class
-class DiscordMusicPlayer extends AudioPlayer {
+class MusicPlayer extends AudioPlayer {
     public guildId: string;
     public video?: string;
     private client: Client;
@@ -83,15 +83,33 @@ class DiscordMusicPlayer extends AudioPlayer {
     }
 }
 
-// AudioPlayer Manager class
+// Singleton AudioPlayer Manager
 class MusicManager {
-    private audioPlayers: Map<string, DiscordMusicPlayer> = new Map();
-    private client: Client;
-    private innertube?: Innertube;
+    private static instance: MusicManager | null = null;
+    private audioPlayers: Map<string, MusicPlayer> = new Map();
+    private client: Client | null = null;
+    private innertube: Innertube | null = null;
 
-    constructor(client: Client) {
+    private constructor() {
+        // Private constructor prevents direct instantiation
+    }
+
+    public static getInstance(): MusicManager {
+        if (!MusicManager.instance) {
+            MusicManager.instance = new MusicManager();
+        }
+        return MusicManager.instance;
+    }
+
+    public async initialize(client: Client): Promise<void> {
+        if (this.client) {
+            console.warn("AudioPlayerManager already initialized");
+            return;
+        }
+
         this.client = client;
-        this.initializeInnertube();
+        await this.initializeInnertube();
+        console.debug("AudioPlayerManager initialized");
     }
 
     private async initializeInnertube(): Promise<void> {
@@ -103,15 +121,21 @@ class MusicManager {
         });
     }
 
-    public getMusicPlayer(guildId: string): DiscordMusicPlayer {
+    public getMusicPlayer(guildId: string): MusicPlayer {
+        if (!this.client) {
+            throw new Error(
+                "AudioPlayerManager not initialized. Call initialize() first.",
+            );
+        }
+
         if (!this.audioPlayers.has(guildId)) {
-            const audioPlayer = new DiscordMusicPlayer(guildId, this.client);
+            const audioPlayer = new MusicPlayer(guildId, this.client);
             this.audioPlayers.set(guildId, audioPlayer);
         }
         return this.audioPlayers.get(guildId)!;
     }
 
-    public removeMusicPlayer(guildId: string): boolean {
+    public removeAudioPlayer(guildId: string): boolean {
         const audioPlayer = this.audioPlayers.get(guildId);
         if (audioPlayer) {
             audioPlayer.removeAllListeners();
@@ -133,7 +157,7 @@ class MusicManager {
         return videoStream;
     }
 
-    public getAllAudioPlayers(): Map<string, DiscordMusicPlayer> {
+    public getAllMusicPlayers(): Map<string, MusicPlayer> {
         return new Map(this.audioPlayers);
     }
 
@@ -143,6 +167,12 @@ class MusicManager {
             return player && !player.isIdle();
         });
     }
+
+    public isInitialized(): boolean {
+        return this.client !== null;
+    }
 }
 
-export { DiscordMusicPlayer, MusicManager };
+// Export singleton instance getter
+export const getMusicManager = () => MusicManager.getInstance();
+export { MusicPlayer };

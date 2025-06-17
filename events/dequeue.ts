@@ -1,4 +1,4 @@
-import { musicManager } from "@/index";
+import { getMusicManager } from "@/utils/audioplayer";
 import VideoQueue from "@/utils/queue";
 import {
     createAudioResource,
@@ -13,7 +13,7 @@ interface DequeueEvent {
 const execute = async ({ guildId }: DequeueEvent) => {
     const queueEntry = VideoQueue.getQueue(guildId).dequeue();
     const videoInfo = queueEntry?.video.basic_info;
-    const audioPlayer = musicManager.getMusicPlayer(guildId);
+    const musicPlayer = getMusicManager().getMusicPlayer(guildId);
 
     if (!videoInfo) {
         console.debug(`No video to dequeue in guild ${guildId}`);
@@ -40,8 +40,8 @@ const execute = async ({ guildId }: DequeueEvent) => {
         return;
     }
 
-    const audioStream = musicManager.getYoutubeStream(videoInfo.id);
-    audioPlayer.video = videoInfo.title.toString();
+    const audioStream = getMusicManager().getYoutubeStream(videoInfo.id);
+    musicPlayer.video = videoInfo.title.toString();
 
     console.debug(`Dequeued video: ${videoInfo.title} from guild ${guildId}`);
 
@@ -53,7 +53,7 @@ const execute = async ({ guildId }: DequeueEvent) => {
         },
     });
 
-    audioPlayer.play(audioResource);
+    musicPlayer.play(audioResource);
 };
 
 export default {

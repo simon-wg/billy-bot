@@ -1,4 +1,4 @@
-import { musicManager } from "@/index";
+import { getMusicManager } from "@/utils/audioplayer";
 import { setMessage } from "@/utils/messages";
 import type { Command } from "@/utils/types";
 import {
@@ -19,8 +19,8 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         return;
     }
 
-    const audioPlayer = musicManager.getMusicPlayer(guildId);
-    if (!audioPlayer.isPlaying()) {
+    const musicPlayer = getMusicManager().getMusicPlayer(guildId);
+    if (!musicPlayer.isPlaying()) {
         const interactionReply = interaction.reply({
             content: "No music is currently playing.",
             flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
