@@ -1,5 +1,8 @@
 import { token } from "@/config";
 import { getClient } from "@/utils/discord";
+import { generateDependencyReport } from "@discordjs/voice";
+
+console.log(generateDependencyReport());
 
 const client = getClient();
 
