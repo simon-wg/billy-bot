@@ -1,24 +1,23 @@
 import { getAudioPlayer, getYoutubeStream } from "@/utils/audioplayer";
+import { getClient } from "@/utils/discord";
 import VideoQueue from "@/utils/queue";
 import {
-    AudioPlayerStatus,
     createAudioResource,
     entersState,
     getVoiceConnection,
     StreamType,
     VoiceConnectionStatus,
 } from "@discordjs/voice";
-import { type Client } from "discord.js";
 
 interface DequeueEvent {
-    client: Client;
     guildId: string;
 }
 
-const execute = async ({ client, guildId }: DequeueEvent) => {
+const execute = async ({ guildId }: DequeueEvent) => {
+    const client = getClient();
     const queueEntry = VideoQueue.getQueue(guildId).dequeue();
     const video = queueEntry?.video;
-    const audioPlayer = getAudioPlayer();
+    const audioPlayer = getAudioPlayer(guildId);
 
     if (!video) {
         console.debug(`No video to dequeue in guild ${guildId}`);
@@ -28,6 +27,8 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
         }
         return;
     }
+
+    const audioStream = getYoutubeStream(video.video_id);
 
     console.debug(`Dequeued video: ${video.title} from guild ${guildId}`);
 
@@ -56,46 +57,28 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
     }
 
     const setupPlayerHandlers = () => {
-        audioPlayer.on(AudioPlayerStatus.Playing, () => {
-            console.debug(`Now playing: ${video.title} in guild ${guildId}`);
-        });
-
-        audioPlayer.on(AudioPlayerStatus.Idle, () => {
-            console.debug(
-                `Finished playing: ${video.title} in guild ${guildId}`,
-            );
-
-            setTimeout(() => {
-                client.emit("dequeue", { client, guildId });
-            }, 100); // Small delay to ensure cleanup
-        });
-
-        audioPlayer.on(AudioPlayerStatus.AutoPaused, () => {
-            console.debug(`Auto-paused: ${video.title} in guild ${guildId}`);
-        });
-
-        audioPlayer.on("error", (error) => {
+        audioPlayer.once("error", (error) => {
             console.error(`Audio player error in guild ${guildId}:`, error);
-            getAudioPlayer().stop();
+            getAudioPlayer(guildId).stop();
             setTimeout(() => {
-                client.emit("dequeue", { client, guildId });
+                client.emit("dequeue", { guildId });
             }, 100);
         });
     };
 
     try {
-        const audioStream = await getYoutubeStream(video.video_id);
-
-        const audioResource = createAudioResource(audioStream, {
+        const audioResource = createAudioResource(await audioStream, {
             inputType: StreamType.Arbitrary,
-            inlineVolume: false,
+            inlineVolume: true,
             metadata: {
                 title: video.title,
             },
         });
 
+        audioPlayer.video = video.title.toString();
+
         // Handle resource errors
-        audioResource.playStream.on("error", (error) => {
+        audioResource.playStream.once("error", (error) => {
             console.error(
                 `Error in audio resource for video ${video.title}:`,
                 error,
@@ -103,16 +86,14 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
             audioPlayer.stop();
         });
 
-        audioResource.playStream.on("close", () => {
-            console.debug(
-                `Audio stream closed for video ${video.title} in guild ${guildId}`,
-            );
-        });
-
-        audioResource.playStream.on("end", () => {
+        audioResource.playStream.once("end", () => {
             console.debug(
                 `Audio stream ended for video ${video.title} in guild ${guildId}`,
             );
+            setTimeout(() => {
+                client.emit("dequeue", { guildId });
+            }, 100); // Small delay to ensure cleanup
+            return;
         });
 
         // Subscribe to the connection
@@ -135,8 +116,9 @@ const execute = async ({ client, guildId }: DequeueEvent) => {
         );
         // Ensure we continue to the next song even on error
         setTimeout(() => {
-            client.emit("dequeue", { client, guildId });
+            client.emit("dequeue", { guildId });
         }, 1000);
+        return;
     }
 };
 

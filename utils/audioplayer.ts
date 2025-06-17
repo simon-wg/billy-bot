@@ -10,7 +10,7 @@ import { ClientType, Innertube, UniversalCache } from "youtubei.js";
 
 let innertubeInstance: Innertube | null = null;
 
-let audioPlayer: AudioPlayer | null = null;
+const audioPlayers: Map<string, AudioPlayer> = new Map();
 
 const getYoutubeStream = async (videoId: string): Promise<Readable> => {
     const fetchFunction = Bun.fetch;
@@ -33,18 +33,39 @@ const getYoutubeStream = async (videoId: string): Promise<Readable> => {
     return videoStream;
 };
 
-const getAudioPlayer = (): AudioPlayer => {
-    if (!audioPlayer) {
-        audioPlayer = createAudioPlayer({
+const getAudioPlayer = (guildId: string): AudioPlayer => {
+    if (!audioPlayers.get(guildId)) {
+        const audioPlayer = createAudioPlayer({
             behaviors: {
                 noSubscriber: NoSubscriberBehavior.Pause,
             },
         });
+        audioPlayers.set(guildId, audioPlayer);
+        if (!audioPlayer) {
+            throw new Error("Failed to create audio player");
+        }
         audioPlayer.isPlaying = () => {
             return audioPlayer?.state.status === AudioPlayerStatus.Playing;
         };
+        audioPlayer.isIdle = () => {
+            return audioPlayer?.state.status === AudioPlayerStatus.Idle;
+        };
+        audioPlayer.isPaused = () => {
+            return audioPlayer?.state.status === AudioPlayerStatus.Paused;
+        };
+        audioPlayer.currentVideo = () => {
+            if (audioPlayer?.video) {
+                return audioPlayer.video;
+            }
+            return null;
+        };
+        audioPlayer.on(AudioPlayerStatus.Playing, () => {
+            console.debug(
+                `Audio player is now playing: ${audioPlayer?.currentVideo()}`,
+            );
+        });
     }
-    return audioPlayer;
+    return audioPlayers.get(guildId)!;
 };
 
 export { getAudioPlayer, getYoutubeStream };

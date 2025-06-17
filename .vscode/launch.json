@@ -12,7 +12,7 @@
             "program": "${workspaceFolder}/index.ts",
             "cwd": "${workspaceFolder}",
             "stopOnEntry": false,
-            "watchMode": true
+            "watchMode": false
         },
         {
             "type": "bun",

@@ -10,5 +10,9 @@ declare module "discord.js" {
 declare module "@discordjs/voice" {
     export interface AudioPlayer extends AudioPlayer {
         isPlaying: () => boolean;
+        isIdle: () => boolean;
+        isPaused: () => boolean;
+        currentVideo: () => string | null;
+        video: string;
     }
 }
