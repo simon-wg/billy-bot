@@ -2,6 +2,11 @@ FROM oven/bun AS base
 WORKDIR /usr/src/app
 
 FROM base AS install
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /tmp/dev
 COPY package.json bun.lock /tmp/dev/
 RUN cd /tmp/dev && bun install --frozen-lockfile
