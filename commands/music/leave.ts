@@ -1,12 +1,10 @@
 import { getMusicManager } from "@/utils/audioplayer";
-import { setMessage } from "@/utils/messages";
 import VideoQueue from "@/utils/queue";
 import type { Command } from "@/utils/types";
 import { getVoiceConnection } from "@discordjs/voice";
 import {
     ChatInputCommandInteraction,
     InteractionContextType,
-    MessageFlags,
     SlashCommandBuilder,
 } from "discord.js";
 
@@ -23,13 +21,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         connection.destroy();
     }
 
-    const interactionReply = await interaction.reply({
+    await interaction.reply({
         content: "The music queue has been cleared.",
-        flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
     });
-
-    // Removes the previous message if it exists
-    setMessage(interaction.user.id, interactionReply);
 };
 
 export default {

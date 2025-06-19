@@ -40,12 +40,32 @@ const execute = async ({ guildId }: DequeueEvent) => {
         return;
     }
 
-    const audioStream = getMusicManager().getYoutubeStream(videoInfo.id);
+    const audioStream = getMusicManager()
+        .getYoutubeStream(videoInfo.id)
+        .then(
+            (result) => {
+                return result;
+            },
+            (error) => {
+                console.error(
+                    `Failed to get audio stream for video ${videoInfo.id}:`,
+                    error,
+                );
+                return null;
+            },
+        );
+
+    const resolvedAudioStream = await audioStream;
+
+    if (!resolvedAudioStream) {
+        return execute({ guildId });
+    }
+
     musicPlayer.video = videoInfo.title.toString();
 
     console.debug(`Dequeued video: ${videoInfo.title} from guild ${guildId}`);
 
-    const audioResource = createAudioResource(await audioStream, {
+    const audioResource = createAudioResource(resolvedAudioStream, {
         inputType: StreamType.Arbitrary,
         inlineVolume: true,
         metadata: {

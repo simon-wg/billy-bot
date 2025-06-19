@@ -149,7 +149,10 @@ class MusicManager {
             throw new Error("Innertube is not initialized");
         }
 
-        const video = await this.innertube.download(videoId);
+        const video = await this.innertube.download(videoId).catch((error) => {
+            console.error(`Failed to download video ${videoId}:`, error);
+            return Promise.reject(`Failed to download video: ${error}`);
+        });
         const videoStream = Readable.fromWeb(video, {
             highWaterMark: 1024 * 1024, // 1MB buffer size
         });

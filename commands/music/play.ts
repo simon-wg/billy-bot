@@ -1,5 +1,4 @@
 import { getMusicManager } from "@/utils/audioplayer";
-import { setMessage } from "@/utils/messages";
 import VideoQueue from "@/utils/queue";
 import type { Command } from "@/utils/types";
 import { searchYouTube, validYoutubeUrl, videoFromUrl } from "@/utils/youtube";
@@ -21,13 +20,14 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     const voiceChannel = guildMember?.voice.channel;
 
     if (!voiceChannel) {
-        const interactionReply = interaction.reply({
+        interaction.reply({
             content: "You must be in a voice channel to play music.",
             flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
         });
-        setMessage(user.id, await interactionReply);
         return;
     }
+
+    interaction.deferReply();
 
     const connection = joinVoiceChannel({
         channelId: voiceChannel.id,
@@ -36,7 +36,6 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
 
     connection.subscribe(musicPlayer);
-
     const query = interaction.options.getString("query", true);
 
     const videoInfo = validYoutubeUrl(query)
@@ -44,18 +43,17 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
         : await searchYouTube(query);
 
     if (!videoInfo) {
-        const interactionReply = interaction.reply({
+        interaction.editReply({
             content: "No video found for the given query.",
-            flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
         });
-        setMessage(user.id, await interactionReply);
         return;
     }
+
     queue.add(videoInfo, 0);
 
     const isPlaying: boolean = musicPlayer.isPlaying();
     const response = !isPlaying
-        ? `**${videoInfo.basic_info.title}** is now playing.`
+        ? `Playing **${videoInfo.basic_info.title}**`
         : `**${videoInfo.basic_info.title}** has been added to the queue.`;
 
     if (!isPlaying) {
@@ -67,13 +65,9 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
             guildId: interaction.guildId,
         });
     }
-    const interactionReply = interaction.reply({
+    interaction.editReply({
         content: response,
-        flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
     });
-
-    // Removes the previous message if it exists
-    setMessage(interaction.user.id, await interactionReply);
 };
 
 export default {

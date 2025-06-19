@@ -1,5 +1,4 @@
 import { getMusicManager } from "@/utils/audioplayer";
-import { setMessage } from "@/utils/messages";
 import type { Command } from "@/utils/types";
 import {
     InteractionContextType,
@@ -11,34 +10,29 @@ import {
 const execute = async (interaction: ChatInputCommandInteraction) => {
     const guildId = interaction.guildId;
     if (!guildId) {
-        const interactionReply = interaction.reply({
+        interaction.reply({
             content: "This command can only be used in a server.",
             flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
         });
-        setMessage(interaction.user.id, await interactionReply);
         return;
     }
 
     const musicPlayer = getMusicManager().getMusicPlayer(guildId);
     if (!musicPlayer.isPlaying()) {
-        const interactionReply = interaction.reply({
+        interaction.reply({
             content: "No music is currently playing.",
             flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
         });
-        setMessage(interaction.user.id, await interactionReply);
         return;
     }
 
-    const interactionReply = interaction.reply({
+    interaction.reply({
         content: "Skipped the current song.",
-        flags: [MessageFlags.Ephemeral, MessageFlags.SuppressNotifications],
     });
 
     interaction.client.emit("dequeue", {
         guildId: guildId,
     });
-
-    setMessage(interaction.user.id, await interactionReply);
 };
 
 export default {
