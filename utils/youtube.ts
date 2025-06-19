@@ -4,17 +4,22 @@ const innertube = await Innertube.create();
 
 export const searchYouTube = async (
     query: string,
-): Promise<YT.VideoInfo | undefined | null> => {
+    results: number = 1,
+): Promise<YT.VideoInfo[] | undefined | null> => {
     try {
         const searchResult = await innertube.search(query, { type: "video" });
-        const firstVideo = searchResult.videos.firstOfType(YTNodes.Video);
-        const videoId = firstVideo?.video_id;
-        if (!videoId) {
+        const videoIds = searchResult.videos
+            .filter((video) => video instanceof YTNodes.Video)
+            .slice(0, results)
+            .map((video) => video.video_id);
+        if (!videoIds) {
             console.debug("No video found for the given query.");
             return null;
         }
-        const videoInfo = innertube.getBasicInfo(videoId);
-        return videoInfo;
+        const videos = await Promise.all(
+            videoIds.map((videoId) => innertube.getBasicInfo(videoId)),
+        );
+        return videos;
     } catch (error) {
         console.error("Error searching YouTube:", error);
         return null;
@@ -23,11 +28,13 @@ export const searchYouTube = async (
 
 export const videoFromUrl = async (
     query: string,
-): Promise<YT.VideoInfo | null | undefined> => {
+): Promise<YT.VideoInfo[] | null | undefined> => {
     const url = new URL(query)!;
     const videoId = url.searchParams.get("v")!;
     try {
-        const videoInfo = innertube.getBasicInfo(videoId);
+        const videoInfo = innertube.getBasicInfo(videoId).then((info) => {
+            return [info];
+        });
         return videoInfo;
     } catch (error) {
         console.error("Error fetching video from URL:", error);

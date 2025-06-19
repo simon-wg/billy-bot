@@ -4,11 +4,13 @@ import type { Command } from "@/utils/types";
 import { searchYouTube, validYoutubeUrl, videoFromUrl } from "@/utils/youtube";
 import { joinVoiceChannel } from "@discordjs/voice";
 import {
+    AutocompleteInteraction,
     ChatInputCommandInteraction,
     InteractionContextType,
     MessageFlags,
     SlashCommandBuilder,
 } from "discord.js";
+import { YT } from "youtubei.js";
 
 const execute = async (interaction: ChatInputCommandInteraction) => {
     const musicPlayer = getMusicManager().getMusicPlayer(interaction.guildId!);
@@ -38,16 +40,19 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     connection.subscribe(musicPlayer);
     const query = interaction.options.getString("query", true);
 
-    const videoInfo = validYoutubeUrl(query)
+    const videoInfos = validYoutubeUrl(query)
         ? await videoFromUrl(query)
         : await searchYouTube(query);
 
-    if (!videoInfo) {
+    if (!videoInfos || videoInfos.length === 0 || !videoInfos[0]) {
+        console.debug(`No video found for query: ${query}`);
         interaction.editReply({
             content: "No video found for the given query.",
         });
         return;
     }
+
+    const videoInfo = videoInfos[0];
 
     queue.add(videoInfo, 0);
 
@@ -70,6 +75,44 @@ const execute = async (interaction: ChatInputCommandInteraction) => {
     });
 };
 
+const autocomplete = async (interaction: AutocompleteInteraction) => {
+    const query = interaction.options.getString("query", true);
+
+    // Handle the case where the query is a valid YouTube URL
+    if (validYoutubeUrl(query)) {
+        const videoTitles = (await videoFromUrl(query))?.map(
+            (videoInfo) => videoInfo.basic_info.title as string,
+        );
+
+        if (!videoTitles || videoTitles.length === 0) {
+            console.debug(`No video found for URL: ${query}`);
+            return interaction.respond([]);
+        }
+        return interaction.respond(
+            videoTitles.map((title) => ({
+                name: title,
+                value: title,
+            })),
+        );
+    }
+
+    const videoInfos = await searchYouTube(query, 5);
+    if (!videoInfos || videoInfos.length === 0) {
+        console.debug(`No video found for query: ${query}`);
+        return interaction.respond([]);
+    }
+    const videoTitles = videoInfos
+        .filter((videoInfo) => videoInfo instanceof YT.VideoInfo)
+        .map((videoInfo) => videoInfo.basic_info.title as string);
+
+    return interaction.respond(
+        videoTitles.map((title) => ({
+            name: title,
+            value: title,
+        })),
+    );
+};
+
 export default {
     data: new SlashCommandBuilder()
         .setName("play")
@@ -78,8 +121,10 @@ export default {
             option
                 .setName("query")
                 .setDescription("The song to play")
+                .setAutocomplete(true)
                 .setRequired(true),
         )
         .setContexts([InteractionContextType.Guild]),
     execute,
+    autocomplete,
 } satisfies Command;
