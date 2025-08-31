@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "bun",
+			"script": "bun run debug",
+			"label": "bun: debug",
+			"detail": "Run Bun in debug mode",
+			"isBackground": true,
+			"problemMatcher": {
+				"owner": "bun",
+				"fileLocation": ["relative", "${workspaceFolder}"],
+				"pattern": {
+					"regexp": "",
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^Listening:$",
+					"endsPattern": "^\\s+https?://.*:\\d+/\\s*$",
+				}
+			}
+		}
+	]
+}
